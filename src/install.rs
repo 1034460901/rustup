@@ -1,0 +1,156 @@
+//! Installation and upgrade of both distribution-managed and local
+//! toolchains
+use std::path::{Path, PathBuf};
+
+use anyhow::Result;
+use tracing::debug;
+
+use crate::{
+    config::Cfg,
+    dist::{DistOptions, manifest::ManifestWithHash, prefix::InstallPrefix},
+    errors::RustupError,
+    toolchain::{CustomToolchainName, LocalToolchainName, Toolchain},
+    utils,
+};
+
+#[derive(Clone, Debug)]
+pub(crate) enum UpdateStatus {
+    Installed,
+    Updated(String), // Stores the version of rustc *before* the update
+    Unchanged,
+}
+
+pub(crate) enum InstallMethod<'cfg, 'a> {
+    Copy {
+        src: &'a Path,
+        dest: &'a CustomToolchainName,
+        cfg: &'cfg Cfg<'cfg>,
+    },
+    Link {
+        src: &'a Path,
+        dest: &'a CustomToolchainName,
+        cfg: &'cfg Cfg<'cfg>,
+    },
+    Dist(DistOptions<'cfg, 'a>),
+}
+
+impl InstallMethod<'_, '_> {
+    // Install a toolchain
+    #[tracing::instrument(level = "trace", err(level = "trace"), skip_all)]
+    pub(crate) async fn install(self, manifest: Option<ManifestWithHash>) -> Result<UpdateStatus> {
+        // Initialize rayon for use by the remove_dir_all crate limiting the number of threads.
+        // This will error if rayon is already initialized but it's fine to ignore that.
+        let _ = rayon::ThreadPoolBuilder::new()
+            .num_threads(self.cfg().process.io_thread_count()?.into())
+            .build_global();
+        match &self {
+            InstallMethod::Copy { .. }
+            | InstallMethod::Link { .. }
+            | InstallMethod::Dist(DistOptions {
+                old_date_version: None,
+                ..
+            }) => debug!("installing toolchain {}", self.dest_basename()),
+            _ => debug!("updating existing install for '{}'", self.dest_basename()),
+        }
+
+        debug!("toolchain directory: {}", self.dest_path().display());
+        let updated = self.run(&self.dest_path(), manifest).await?;
+
+        let status = match updated {
+            false => {
+                debug!("toolchain is already up to date");
+                UpdateStatus::Unchanged
+            }
+            true => {
+                debug!("toolchain {} installed", self.dest_basename());
+                match &self {
+                    InstallMethod::Dist(DistOptions {
+                        old_date_version: Some((_, v)),
+                        ..
+                    }) => UpdateStatus::Updated(v.clone()),
+                    InstallMethod::Copy { .. }
+                    | InstallMethod::Link { .. }
+                    | InstallMethod::Dist { .. } => UpdateStatus::Installed,
+                }
+            }
+        };
+
+        // Final check, to ensure we're installed
+        match Toolchain::exists(self.cfg(), &self.local_name())? {
+            true => Ok(status),
+            false => Err(RustupError::ToolchainNotInstallable(self.dest_basename()).into()),
+        }
+    }
+
+    async fn run(&self, path: &Path, manifest: Option<ManifestWithHash>) -> Result<bool> {
+        if path.exists() {
+            // Don't uninstall first for Dist method
+            match self {
+                InstallMethod::Dist { .. } => {}
+                _ => {
+                    uninstall(path)?;
+                }
+            }
+        }
+
+        match self {
+            InstallMethod::Copy { src, .. } => {
+                utils::copy_dir(src, path)?;
+                Ok(true)
+            }
+            InstallMethod::Link { src, .. } => {
+                utils::symlink_dir(src, path)?;
+                Ok(true)
+            }
+            InstallMethod::Dist(opts) => {
+                let prefix = &InstallPrefix::from(path.to_owned());
+                let maybe_new_hash = opts.install_into(prefix, manifest).await?;
+
+                if let Some(hash) = maybe_new_hash {
+                    utils::write_file("update hash", &opts.update_hash, &hash)?;
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+        }
+    }
+
+    fn cfg(&self) -> &Cfg<'_> {
+        match self {
+            InstallMethod::Copy { cfg, .. } => cfg,
+            InstallMethod::Link { cfg, .. } => cfg,
+            InstallMethod::Dist(DistOptions { cfg, .. }) => cfg,
+        }
+    }
+
+    fn local_name(&self) -> LocalToolchainName {
+        match self {
+            InstallMethod::Copy { dest, .. } => (*dest).into(),
+            InstallMethod::Link { dest, .. } => (*dest).into(),
+            InstallMethod::Dist(DistOptions {
+                toolchain: desc, ..
+            }) => (*desc).into(),
+        }
+    }
+
+    fn dest_basename(&self) -> String {
+        self.local_name().to_string()
+    }
+
+    fn dest_path(&self) -> PathBuf {
+        match self {
+            InstallMethod::Copy { cfg, dest, .. } => cfg.toolchain_path(&(*dest).into()),
+            InstallMethod::Link { cfg, dest, .. } => cfg.toolchain_path(&(*dest).into()),
+            InstallMethod::Dist(DistOptions {
+                cfg,
+                toolchain: desc,
+                ..
+            }) => cfg.toolchain_path(&(*desc).into()),
+        }
+    }
+}
+
+pub(crate) fn uninstall(path: &Path) -> Result<()> {
+    utils::remove_dir("install", path)
+}
