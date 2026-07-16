@@ -591,7 +591,7 @@ impl TargetTuple {
                 )
             };
 
-            #[cfg(not(target_os = "android"))]
+            #[cfg(all(not(target_os = "android"), not(target_env = "ohos")))]
             let host_tuple = match (sysname, machine) {
                 (b"Linux", b"x86_64") => Some(TUPLE_X86_64_UNKNOWN_LINUX),
                 (b"Linux", b"i686") => Some("i686-unknown-linux-gnu"),
@@ -634,6 +634,26 @@ impl TargetTuple {
                 (_, b"aarch64") => Some("aarch64-linux-android"),
                 (_, b"i686") => Some("i686-linux-android"),
                 (_, b"x86_64") => Some("x86_64-linux-android"),
+                _ => None,
+            };
+
+            // OHOS (HarmonyOS/OpenHarmony) uses target_os="linux" + target_env="ohos".
+            // uname -s returns "HarmonyOS" or "OpenHarmony" instead of "Linux".
+            #[cfg(target_env = "ohos")]
+            let host_tuple = match (sysname, machine) {
+                (b"HarmonyOS" | b"OpenHarmony", b"aarch64") => Some(TUPLE_AARCH64_UNKNOWN_LINUX),
+                (b"HarmonyOS" | b"OpenHarmony", b"x86_64") => Some(TUPLE_X86_64_UNKNOWN_LINUX),
+                (b"HarmonyOS" | b"OpenHarmony", b"loongarch64") => Some(TUPLE_LOONGARCH64_UNKNOWN_LINUX),
+                (b"HarmonyOS" | b"OpenHarmony", b"ppc64") => Some(TUPLE_POWERPC64_UNKNOWN_LINUX),
+                (b"HarmonyOS" | b"OpenHarmony", b"ppc64le") => Some(TUPLE_POWERPC64LE_UNKNOWN_LINUX),
+                (_, b"arm") => Some("arm-unknown-linux-ohos"),
+                (_, b"armv7l") => Some("armv7-unknown-linux-ohos"),
+                (_, b"armv8l") => Some("armv7-unknown-linux-ohos"),
+                (_, b"aarch64") => Some(TUPLE_AARCH64_UNKNOWN_LINUX),
+                (_, b"x86_64") => Some(TUPLE_X86_64_UNKNOWN_LINUX),
+                (_, b"loongarch64") => Some(TUPLE_LOONGARCH64_UNKNOWN_LINUX),
+                (_, b"ppc64") => Some(TUPLE_POWERPC64_UNKNOWN_LINUX),
+                (_, b"ppc64le") => Some(TUPLE_POWERPC64LE_UNKNOWN_LINUX),
                 _ => None,
             };
 
