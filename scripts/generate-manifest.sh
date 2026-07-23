@@ -1,4 +1,4 @@
-#!/data/service/hnp/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 # Generate channel-rust-stable.toml from dist directory tarballs
@@ -6,7 +6,7 @@ set -euo pipefail
 #
 # Usage: generate-manifest.sh [-v VERSION] [-d DIST_DIR]
 #   -v, --version     Rust version (default: 1.95.0)
-#   -d, --dist-dir    Dist directory path (default: ~/work/ohos-dist-server/dist)
+#   -d, --dist-dir    Dist directory path (default: ./dist)
 #   -h, --help        Show help
 
 VERSION="1.95.0"
@@ -42,7 +42,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-: "${DIST_DIR:="/storage/Users/currentUser/work/ohos-dist-server/dist"}"
+: "${DIST_DIR:="./dist"}"
 
 if [[ ! -d "${DIST_DIR}" ]]; then
     echo "ERROR: Dist directory not found: ${DIST_DIR}"

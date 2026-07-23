@@ -1,4 +1,4 @@
-#!/data/service/hnp/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 # Build OHOS Distribution Tarballs
@@ -8,16 +8,16 @@ set -euo pipefail
 # Usage: build-ohos-dist.sh [OPTIONS]
 #   -v, --version       Rust version (default: 1.95.0)
 #   -t, --target        Target triple (default: aarch64-unknown-linux-ohos)
-#   -T, --toolchain-dir Path to pre-compiled toolchain (default: auto-derived from version/target)
-#   -d, --dist-dir      Output directory for tarballs (default: ~/work/ohos-dist-server/dist)
-#   -s, --sign-tool     Path to binary-sign-tool (default: /data/service/hnp/bin/binary-sign-tool)
+#   -T, --toolchain-dir Path to pre-compiled toolchain (default: ~/usr/rust-<version>-<target>)
+#   -d, --dist-dir      Output directory for tarballs (default: ./dist)
+#   -s, --sign-tool     Path to binary-sign-tool (default: binary-sign-tool)
 #   -h, --help          Show this help message
 
 VERSION="1.95.0"
 TARGET="aarch64-unknown-linux-ohos"
 TOOLCHAIN_DIR=""
 DIST_DIR=""
-SIGN_TOOL="/data/service/hnp/bin/binary-sign-tool"
+SIGN_TOOL="binary-sign-tool"
 
 usage() {
     cat <<'USAGE'
@@ -27,8 +27,8 @@ Options:
   -v, --version       Rust version (default: 1.95.0)
   -t, --target        Target triple (default: aarch64-unknown-linux-ohos)
   -T, --toolchain-dir Path to pre-compiled toolchain (default: ~/usr/rust-<version>-<target>)
-  -d, --dist-dir      Output directory for tarballs (default: ~/work/ohos-dist-server/dist)
-  -s, --sign-tool     Path to binary-sign-tool (default: /data/service/hnp/bin/binary-sign-tool)
+  -d, --dist-dir      Output directory for tarballs (default: ./dist)
+  -s, --sign-tool     Path to binary-sign-tool (default: binary-sign-tool)
   -h, --help          Show this help message
 
 Example:
@@ -51,8 +51,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Derive defaults from version/target if not explicitly set
-: "${TOOLCHAIN_DIR:="/storage/Users/currentUser/usr/rust-${VERSION}-${TARGET}"}"
-: "${DIST_DIR:="/storage/Users/currentUser/work/ohos-dist-server/dist"}"
+: "${TOOLCHAIN_DIR:="$HOME/usr/rust-${VERSION}-${TARGET}"}"
+: "${DIST_DIR:="./dist"}"
 
 # Validate toolchain directory exists
 if [[ ! -d "${TOOLCHAIN_DIR}" ]]; then

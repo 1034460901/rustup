@@ -1,4 +1,4 @@
-#!/data/service/hnp/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 # Phase 7: Deploy rustup-init for curl | sh installation on OHOS
@@ -8,19 +8,19 @@ set -euo pipefail
 # Usage: deploy-rustup-init.sh [OPTIONS]
 #   -v, --version       Rustup version (default: 1.30.0)
 #   -t, --target        Target triple (default: aarch64-unknown-linux-ohos)
-#   -d, --dist-dir      Dist directory (default: ~/work/ohos-dist-server/dist)
-#   -r, --rustup-dir    Rustup source dir (default: ~/work/rustup-ohos)
-#   -s, --sign-tool     Path to binary-sign-tool (default: /data/service/hnp/bin/binary-sign-tool)
-#   -u, --update-root   RUSTUP_UPDATE_ROOT URL (default: http://127.0.0.1:8080/rustup)
+#   -d, --dist-dir      Dist directory (default: ./dist)
+#   -r, --rustup-dir    Rustup source dir (default: .)
+#   -s, --sign-tool     Path to binary-sign-tool (default: binary-sign-tool)
+#   -u, --update-root   RUSTUP_UPDATE_ROOT URL (required)
 #   -h, --help          Show help
 
 RUSTUP_VERSION="1.30.0"
 TARGET="aarch64-unknown-linux-ohos"
-DIST_DIR="/storage/Users/currentUser/work/ohos-dist-server/dist"
-RUSTUP_DIR="/storage/Users/currentUser/work/rustup-ohos"
-SIGN_TOOL="/data/service/hnp/bin/binary-sign-tool"
-UPDATE_ROOT="http://127.0.0.1:8080/rustup"
-DIST_SERVER="http://127.0.0.1:8080"
+DIST_DIR=""
+RUSTUP_DIR=""
+SIGN_TOOL="binary-sign-tool"
+UPDATE_ROOT=""
+DIST_SERVER=""
 
 usage() {
     cat <<'USAGE'
@@ -29,15 +29,15 @@ Usage: deploy-rustup-init.sh [OPTIONS]
 Options:
   -v, --version       Rustup version (default: 1.30.0)
   -t, --target        Target triple (default: aarch64-unknown-linux-ohos)
-  -d, --dist-dir      Dist directory (default: ~/work/ohos-dist-server/dist)
-  -r, --rustup-dir    Rustup source dir (default: ~/work/rustup-ohos)
-  -s, --sign-tool     Path to binary-sign-tool
-  -u, --update-root   RUSTUP_UPDATE_ROOT URL (default: http://127.0.0.1:8080/rustup)
+  -d, --dist-dir      Dist directory (default: ./dist)
+  -r, --rustup-dir    Rustup source dir (default: .)
+  -s, --sign-tool     Path to binary-sign-tool (default: binary-sign-tool)
+  -u, --update-root   RUSTUP_UPDATE_ROOT URL (required, e.g. http://localhost:8080/rustup)
   -h, --help          Show help
 
 Example:
-  deploy-rustup-init.sh
-  deploy-rustup-init.sh -v 1.30.0 -t x86_64-unknown-linux-ohos
+  deploy-rustup-init.sh -u http://localhost:8080/rustup
+  deploy-rustup-init.sh -v 1.30.0 -t x86_64-unknown-linux-ohos -u http://myserver:8080/rustup
 USAGE
     exit 0
 }
@@ -54,6 +54,17 @@ while [[ $# -gt 0 ]]; do
         *)                echo "Unknown option: $1"; usage;;
     esac
 done
+
+# Derive defaults
+: "${DIST_DIR:="./dist"}"
+: "${RUSTUP_DIR:="."}"
+
+# Derive DIST_SERVER from UPDATE_ROOT (strip /rustup suffix)
+if [[ -z "${UPDATE_ROOT}" ]]; then
+    echo "ERROR: -u/--update-root is required (e.g. http://localhost:8080/rustup)"
+    exit 1
+fi
+: "${DIST_SERVER:="${UPDATE_ROOT%/rustup}}"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'; NC='\033[0m'
 info()  { echo -e "${GREEN}[INFO]${NC} $*"; }
@@ -73,8 +84,8 @@ if [[ ! -x "${RUSTUP_INIT_BIN}" ]]; then
     exit 1
 fi
 
-if [[ ! -x "${SIGN_TOOL}" ]]; then
-    echo "ERROR: binary-sign-tool not found at ${SIGN_TOOL}"
+if ! command -v "${SIGN_TOOL}" >/dev/null 2>&1; then
+    echo "ERROR: binary-sign-tool not found (checked: ${SIGN_TOOL})"
     exit 1
 fi
 
@@ -161,13 +172,11 @@ info "Step 5: Deploying patched rustup-init.sh..."
 cp "${RUSTUP_DIR}/rustup-init.sh" "${DIST_DIR}/rustup-init.sh"
 
 # Inject RUSTUP_UPDATE_ROOT + RUSTUP_DIST_SERVER exports after shebang
-# The script's own line 29 uses ${RUSTUP_UPDATE_ROOT:-default}, which
-# respects pre-set env vars, so our injected export makes that a no-op.
 TMPFILE=$(mktemp)
 {
     head -1 "${DIST_DIR}/rustup-init.sh"    # shebang line
     echo ""
-    echo "# === OHOS Local Dist Server Override ==="
+    echo "# === OHOS Dist Server Override ==="
     echo "# Auto-injected by deploy-rustup-init.sh"
     echo "export RUSTUP_UPDATE_ROOT=\"${UPDATE_ROOT}\""
     echo "export RUSTUP_DIST_SERVER=\"${DIST_SERVER}\""
@@ -198,18 +207,18 @@ for f in \
     "${ARCHIVE_DIR}/rustup-init" \
     "${ARCHIVE_DIR}/rustup-init.sha256"; do
     if [[ -f "$f" ]]; then
-        info "  ✓ $f"
+        info "  OK $f"
     else
-        warn "  ✗ MISSING: $f"
+        warn "  MISSING: $f"
         ERRORS=$((ERRORS + 1))
     fi
 done
 
 # Verify signed binary has .codesign section
 if readelf -S "${DIST_DEFAULT_DIR}/rustup-init" 2>/dev/null | grep -q '\.codesign'; then
-    info "  ✓ .codesign section present"
+    info "  OK .codesign section present"
 else
-    warn "  ✗ .codesign section MISSING"
+    warn "  MISSING .codesign section"
     ERRORS=$((ERRORS + 1))
 fi
 
