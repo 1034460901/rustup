@@ -449,6 +449,10 @@ get_architecture() {
             _ostype=pc-windows-gnu
             ;;
 
+        HarmonyOS | OpenHarmony)
+            _ostype=unknown-linux-ohos
+            ;;
+
         *)
             err "unrecognized OS type: $_ostype"
             exit 1

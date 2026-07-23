@@ -343,6 +343,33 @@ pub(crate) fn read_dir(name: &'static str, path: &Path) -> Result<fs::ReadDir> {
     })
 }
 
+#[cfg(target_env = "ohos")]
+pub(crate) fn open_browser(path: impl AsRef<OsStr>) -> Result<()> {
+    // HarmonyOS terminal sandbox cannot launch HAP browser apps via CLI.
+    // Instead, write the URL to a log file (visible even when rustup redirects
+    // stdout/stderr) and print to stderr for terminal URL detection.
+    let url = path.as_ref().to_string_lossy().to_string();
+    let home = env::var("HOME").unwrap_or_else(|_| ".".to_string());
+    let log_path = PathBuf::from(home).join(".rustup").join("doc-open.log");
+
+    let mut log = File::create(&log_path).with_context(|| {
+        format!("couldn't create doc log file `{}`", log_path.display())
+    })?;
+    writeln!(log, "=== rustup doc-open ===")?;
+    writeln!(log, "")?;
+    writeln!(log, "  Doc URL: {}", url)?;
+    writeln!(log, "")?;
+    writeln!(log, "  Please open this URL in the browser (com.huawei.hmos.browser)")?;
+    writeln!(log, "  Log file: {}", log_path.display())?;
+    log.flush()?;
+
+    // Also print to stderr — terminal app may detect URLs in output
+    eprintln!("  Doc URL: {}", url);
+
+    Ok(())
+}
+
+#[cfg(not(target_env = "ohos"))]
 pub(crate) fn open_browser(path: impl AsRef<OsStr>) -> Result<()> {
     opener::open_browser(path).context("couldn't open browser")
 }
