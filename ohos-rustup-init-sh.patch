@@ -1,0 +1,13 @@
+--- /storage/Users/currentUser/tmp/rustup-main/rustup-init.sh	2026-07-15 17:27:35.000000000 +0800
++++ /storage/Users/currentUser/work/rustup-ohos/rustup-init.sh	2026-07-16 15:32:13.398623125 +0800
+@@ -449,6 +449,10 @@
+             _ostype=pc-windows-gnu
+             ;;
+ 
++        HarmonyOS | OpenHarmony)
++            _ostype=unknown-linux-ohos
++            ;;
++
+         *)
+             err "unrecognized OS type: $_ostype"
+             exit 1

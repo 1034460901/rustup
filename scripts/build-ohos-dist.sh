@@ -4,12 +4,62 @@ set -euo pipefail
 # Build OHOS Distribution Tarballs
 # Splits the community pre-compiled Rust toolchain into rust-installer v3 format
 # component tarballs, signs all ELF binaries, and generates SHA-256 hashes.
+#
+# Usage: build-ohos-dist.sh [OPTIONS]
+#   -v, --version       Rust version (default: 1.95.0)
+#   -t, --target        Target triple (default: aarch64-unknown-linux-ohos)
+#   -T, --toolchain-dir Path to pre-compiled toolchain (default: auto-derived from version/target)
+#   -d, --dist-dir      Output directory for tarballs (default: ~/work/ohos-dist-server/dist)
+#   -s, --sign-tool     Path to binary-sign-tool (default: /data/service/hnp/bin/binary-sign-tool)
+#   -h, --help          Show this help message
 
-TOOLCHAIN_DIR="/storage/Users/currentUser/usr/rust-1.95.0-aarch64-unknown-linux-ohos"
-DIST_DIR="/storage/Users/currentUser/work/ohos-dist-server/dist"
-SIGN_TOOL="/data/service/hnp/bin/binary-sign-tool"
 VERSION="1.95.0"
 TARGET="aarch64-unknown-linux-ohos"
+TOOLCHAIN_DIR=""
+DIST_DIR=""
+SIGN_TOOL="/data/service/hnp/bin/binary-sign-tool"
+
+usage() {
+    cat <<'USAGE'
+Usage: build-ohos-dist.sh [OPTIONS]
+
+Options:
+  -v, --version       Rust version (default: 1.95.0)
+  -t, --target        Target triple (default: aarch64-unknown-linux-ohos)
+  -T, --toolchain-dir Path to pre-compiled toolchain (default: ~/usr/rust-<version>-<target>)
+  -d, --dist-dir      Output directory for tarballs (default: ~/work/ohos-dist-server/dist)
+  -s, --sign-tool     Path to binary-sign-tool (default: /data/service/hnp/bin/binary-sign-tool)
+  -h, --help          Show this help message
+
+Example:
+  build-ohos-dist.sh -v 1.95.0 -t aarch64-unknown-linux-ohos
+  build-ohos-dist.sh -v 1.96.0 -t x86_64-unknown-linux-ohos -T /path/to/toolchain
+USAGE
+    exit 0
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -v|--version)       VERSION="$2"; shift 2;;
+        -t|--target)        TARGET="$2"; shift 2;;
+        -T|--toolchain-dir) TOOLCHAIN_DIR="$2"; shift 2;;
+        -d|--dist-dir)      DIST_DIR="$2"; shift 2;;
+        -s|--sign-tool)     SIGN_TOOL="$2"; shift 2;;
+        -h|--help)          usage;;
+        *)                  echo "Unknown option: $1"; usage;;
+    esac
+done
+
+# Derive defaults from version/target if not explicitly set
+: "${TOOLCHAIN_DIR:="/storage/Users/currentUser/usr/rust-${VERSION}-${TARGET}"}"
+: "${DIST_DIR:="/storage/Users/currentUser/work/ohos-dist-server/dist"}"
+
+# Validate toolchain directory exists
+if [[ ! -d "${TOOLCHAIN_DIR}" ]]; then
+    echo "ERROR: Toolchain directory not found: ${TOOLCHAIN_DIR}"
+    echo "  Expected pre-compiled Rust ${VERSION} for ${TARGET}"
+    exit 1
+fi
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
