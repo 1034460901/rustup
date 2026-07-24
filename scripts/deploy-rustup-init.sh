@@ -64,7 +64,7 @@ if [[ -z "${UPDATE_ROOT}" ]]; then
     echo "ERROR: -u/--update-root is required (e.g. http://localhost:8080/rustup)"
     exit 1
 fi
-: "${DIST_SERVER:="${UPDATE_ROOT%/rustup}}"
+DIST_SERVER="${UPDATE_ROOT%/rustup}"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'; NC='\033[0m'
 info()  { echo -e "${GREEN}[INFO]${NC} $*"; }
