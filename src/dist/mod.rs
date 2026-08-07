@@ -47,7 +47,10 @@ pub mod temp;
 pub(crate) mod target_tuple;
 pub(crate) use target_tuple::*;
 
+#[cfg(not(target_env = "ohos"))]
 pub static DEFAULT_DIST_SERVER: &str = "https://static.rust-lang.org";
+#[cfg(target_env = "ohos")]
+pub static DEFAULT_DIST_SERVER: &str = "https://gitcode.com/OpenHarmonyPCDeveloper/rust/releases/download/dist";
 
 /// Returns a error message indicating that certain [`Component`]s are missing in a toolchain distribution.
 ///

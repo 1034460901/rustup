@@ -26,7 +26,7 @@ is_zsh() {
 set -u
 
 # If RUSTUP_UPDATE_ROOT is unset or empty, default it.
-RUSTUP_UPDATE_ROOT="${RUSTUP_UPDATE_ROOT:-https://static.rust-lang.org/rustup}"
+RUSTUP_UPDATE_ROOT="${RUSTUP_UPDATE_ROOT:-https://gitcode.com/OpenHarmonyPCDeveloper/rust/releases/download/dist/rustup}"
 # Set quiet as a global for ease of use
 RUSTUP_QUIET=no
 

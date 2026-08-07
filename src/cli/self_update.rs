@@ -547,7 +547,10 @@ impl fmt::Display for SelfUpdateMode {
     }
 }
 
+#[cfg(not(target_env = "ohos"))]
 static DEFAULT_UPDATE_ROOT: &str = "https://static.rust-lang.org/rustup";
+#[cfg(target_env = "ohos")]
+static DEFAULT_UPDATE_ROOT: &str = "https://gitcode.com/OpenHarmonyPCDeveloper/rust/releases/download/dist/rustup";
 
 fn update_root(process: &Process) -> String {
     process

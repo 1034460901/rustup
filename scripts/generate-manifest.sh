@@ -11,7 +11,7 @@ set -euo pipefail
 
 VERSION="1.95.0"
 DIST_DIR=""
-URL_BASE="https://static.rust-lang.org/dist"
+URL_BASE="https://gitcode.com/OpenHarmonyPCDeveloper/rust/releases/download/dist-1.95.0"
 RUSTC_VERSION="rustc 1.95.0 (59807616e 2026-04-14) (built from a source tarball)"
 CARGO_VERSION="cargo 1.95.0 (f2d3ce0bd 2026-03-21) (built from a source tarball)"
 RUSTFMT_VERSION="rustfmt 1.95.0-stable (59807616e 2026-04-14)"
