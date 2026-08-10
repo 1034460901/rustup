@@ -352,7 +352,9 @@ impl<'a> Cfg<'a> {
         };
 
         let dist_root_server = dist_root_server(process)?;
-        let dist_root = dist_root_server.clone() + "/dist";
+        // OHOS: gitcode.com releases serve manifests directly under the release tag,
+        // without a /dist/ subdirectory. Do not append /dist like upstream does.
+        let dist_root = dist_root_server.clone();
 
         let cfg = Self {
             profile_override: None,
@@ -1071,9 +1073,7 @@ fn dist_root_server(process: &Process) -> Result<String> {
     };
 
     trace!("`RUSTUP_DIST_ROOT` has been set to `{root}`");
-    if let Some(stripped) = root.strip_suffix("/dist") {
-        root.truncate(stripped.len());
-    }
+    // OHOS: no /dist suffix stripping needed since we don't append /dist
     Ok(root)
 }
 
