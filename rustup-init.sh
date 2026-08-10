@@ -26,7 +26,7 @@ is_zsh() {
 set -u
 
 # If RUSTUP_UPDATE_ROOT is unset or empty, default it.
-RUSTUP_UPDATE_ROOT="${RUSTUP_UPDATE_ROOT:-https://gitcode.com/OpenHarmonyPCDeveloper/rust/releases/download/dist/rustup}"
+RUSTUP_UPDATE_ROOT="${RUSTUP_UPDATE_ROOT:-https://gitcode.com/OpenHarmonyPCDeveloper/rust/releases/download/dist}"
 # Set quiet as a global for ease of use
 RUSTUP_QUIET=no
 
@@ -97,11 +97,11 @@ main() {
     local _url
     if [ "${RUSTUP_VERSION+set}" = 'set' ]; then
         say "\`RUSTUP_VERSION\` has been set to \`${RUSTUP_VERSION}\`"
-        _url="${RUSTUP_UPDATE_ROOT}/archive/${RUSTUP_VERSION}"
+        # OHOS: gitcode.com releases are flat (no subdirectories), use flat naming
+        _url="${RUSTUP_UPDATE_ROOT}/rustup-init-${RUSTUP_VERSION}-${_arch}${_ext}"
     else
-        _url="${RUSTUP_UPDATE_ROOT}/dist"
+        _url="${RUSTUP_UPDATE_ROOT}/rustup-init-${_arch}${_ext}"
     fi
-    _url="${_url}/${_arch}/rustup-init${_ext}"
 
 
     local _dir
